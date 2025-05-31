@@ -93,3 +93,20 @@ for i, row in movies.iloc[start_index:].iterrows():
     time.sleep(0.3)  # Be polite to endpoints
 
 print(f"✅ Completed. Data saved incrementally to {output_file}")
+
+
+#Merge files.
+
+# Load the original movie file with genres
+original_movies = pd.read_csv("archive/movie.csv")  # should contain 'movieId', 'title', 'genres'
+
+# Load the enriched file with Wikipedia info
+enriched_movies = pd.read_csv("movies_with_wikipedia_intro.csv", quotechar='"', escapechar='\\', on_bad_lines='skip')
+
+# Merge on 'movieId' to bring the genres into the enriched file
+merged = pd.merge(enriched_movies, original_movies[["movieId", "genres"]], on="movieId", how="left")
+
+# Save to a new file
+merged.to_csv("movies_with_genres_and_intro.csv", index=False)
+
+print("✅ Genres successfully added. Output saved to 'movies_with_genres_and_intro.csv'")
