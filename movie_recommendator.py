@@ -1,14 +1,20 @@
+"""
+File to handle the movie recommendation logic.
+"""
+
 import pandas as pd
 from sentence_transformers import SentenceTransformer
 from sklearn.metrics.pairwise import cosine_similarity
 import numpy as np
 
+import data_processor
+
 # Load datasets
 #/Users/whiiz/Code/Movie_Recommendation/
 # movies = pd.read_csv("movies_with_wikipedia_intro.csv")
-movies = pd.read_csv("movies_with_genres_and_intro.csv", quotechar='"', escapechar='\\', on_bad_lines='skip')
-ratings = pd.read_csv("archive/rating.csv")
-tags = pd.read_csv("archive/tag.csv")
+movies = pd.read_csv("dataset/movies_with_genres_and_intro.csv", quotechar='"', escapechar='\\', on_bad_lines='skip')
+ratings = pd.read_csv("dataset/rating.csv")
+tags = pd.read_csv("dataset/tag.csv")
 
 # Fill missing tags
 tags['tag'] = tags['tag'].fillna('')

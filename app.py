@@ -1,15 +1,26 @@
+"""
+Movie Recommender App using Streamlit
+Visualization file
+"""
+
 import streamlit as st
 import matplotlib.pyplot as plt
 import pandas as pd
 import os
 import numpy as np
 
-if not os.path.exists("feedback_data.csv"):
+# Used datasets
+movies_file = "dataset/movies_with_genres_and_intro.csv"
+ratings_file = "dataset/rating.csv"
+users_file = "dataset/user.csv"
+
+
+if not os.path.exists("dataset/feedback.csv"):
     pd.DataFrame(columns=["userId", "movieId", "title", "sim_query", "sim_user", "rating_scaled", "final_score", "feedback"]).to_csv("feedback.csv", index=False)
 
-feedback_df = pd.read_csv("feedback_data.csv")  # o como lo estés almacenando
+feedback_df = pd.read_csv("dataset/feedback.csv")  # o como lo estés almacenando
 
-def save_feedback(feedback_row, filename="feedback_data.csv"):
+def save_feedback(feedback_row, filename="feedback.csv"):
     """
     Save a feedback row into a CSV file without duplicating entries for the same user and movie.
     """
@@ -87,6 +98,45 @@ weight_query, weight_user, weight_rating = estimate_weights_from_feedback(user_i
 # weight_query = 0.6
 # weight_user = 0.3
 # weight_rating = 0.1
+
+
+# Settings section
+with st.expander("### ⚙️ Advanced search"):
+
+    # Number of results
+    top_n = st.slider("Number of movies to recommend", min_value=5, max_value=20, value=10)
+
+    # Relevance weights
+    col1, col2, col3 = st.columns(3)
+    with col1:
+        weight_query = st.slider("Weight: description", 0.0, 1.0, 0.6, step=0.05)
+    with col2:
+        weight_user = st.slider("Weight: user profile", 0.0, 1.0, 0.3, step=0.05)
+    with col3:
+        weight_rating = st.slider("Weight: global rating", 0.0, 1.0, 0.1, step=0.05)
+
+    # Normalize weights
+    total_weight = weight_query + weight_user + weight_rating
+    weight_query /= total_weight
+    weight_user /= total_weight
+    weight_rating /= total_weight
+
+    if st.button("🎭 Show average rating per genre"):
+        st.session_state["genre_ratings"] = get_average_rating_per_genre(user_id)
+
+    # Show bar chart if available
+    if "genre_ratings" in st.session_state:
+        if st.session_state["genre_ratings"] is not None:
+            st.subheader("📊 Average rating by genre")
+
+            data = st.session_state["genre_ratings"]
+            fig, ax = plt.subplots(figsize=(8, 6))
+            ax.barh(data["genre"], data["avg_rating"], color="skyblue")
+            ax.set_xlabel("Average Rating")
+            ax.set_title("User's average rating per genre")
+            st.pyplot(fig)
+
+
 
 
 # --- Button: generate recommendations ---
