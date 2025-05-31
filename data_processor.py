@@ -10,12 +10,15 @@ import numpy as np
 from sklearn.metrics.pairwise import cosine_similarity
 from sentence_transformers import SentenceTransformer
 
-# Load the pre-trained SentenceTransformer model
+
+"""
+Load the pre-trained SentenceTransformer model
+This model is used for generating embeddings from text data, such as movie titles and descriptions.
+"""
 model = SentenceTransformer("all-MiniLM-L6-v2")
 
 
-
-""" Dataset file paths"""
+""" Dataset file paths """
 MOVIES_FILE = "dataset/movies_with_genres_and_intro.csv"
 RATINGS_FILE = "dataset/rating.csv"
 USERS_FILE = "dataset/users.csv"
@@ -25,11 +28,11 @@ GENOME_TAGS_FILE = "dataset/genome_tags.csv"
 
 
 
-""" Load datasets"""
+""" Load datasets """
 MOVIES_DF = pd.read_csv(MOVIES_FILE, quotechar='"', escapechar='\\', on_bad_lines='skip')
 RATINGS_DF = pd.read_csv(RATINGS_FILE)
 USERS_DF = pd.read_csv(USERS_FILE)
-TAGS_DF = pd.read_csv(TAGS_FILE)
+TAGS_DF = pd.read_csv(TAGS_FILE) # not used in the current implementation, but can be useful for future enhancements
 GENOME_SCORES_DF = pd.read_csv(GENOME_SCORES_FILE)
 GENOME_TAGS_DF = pd.read_csv(GENOME_TAGS_FILE)
 
@@ -96,12 +99,13 @@ def movie_recommendation(user_id, user_prompt, data, top_n=10, weights=None):
     user_ratings = ratings[ratings["userId"] == user_id]
     high_rated = user_ratings[user_ratings["rating"] >= 4.0]
     if not high_rated.empty:
-        user_movie_vectors = movie_tag_matrix.loc[high_rated["movieId"]].values
-        user_profile_vec = np.average(user_movie_vectors, axis=0, weights=high_rated["rating"])
+        user_movie_vectors = movie_tag_matrix.loc[high_rated["movieId"]].values  # Each row represents a high-rated movie's tag relevance vector for the current user
+        user_profile_vec = np.average(user_movie_vectors, axis=0, weights=high_rated["rating"])    # Each row represents a tag, the value represents the average relevance score for that tag across the user's highly rated movies
     else:
         user_profile_vec = np.zeros(movie_tag_matrix.shape[1])
 
     # --- 2. Prompt embedding in tag space (simple: match tags in prompt) ---
+    # It basically searches for the words of the prompt and looks for matches on any tag from genome_tags
     prompt_vec = np.zeros(movie_tag_matrix.shape[1])
     prompt_words = set(user_prompt.lower().split())
     tag_list = [tag.lower() for tag in movie_tag_matrix.columns]
@@ -112,12 +116,16 @@ def movie_recommendation(user_id, user_prompt, data, top_n=10, weights=None):
         prompt_vec /= np.linalg.norm(prompt_vec)
 
     # --- 3. Similarity scores ---
+    # Calculate cosine similarity between the prompt vector, user profile vector
     movie_vectors = movie_tag_matrix.values
     sim_prompt = cosine_similarity([prompt_vec], movie_vectors)[0]
     sim_user = cosine_similarity([user_profile_vec], movie_vectors)[0]
 
     # --- 4. Genre and year preference ---
     def genre_score(movie_genres):
+        """
+        Calculate genre similarity score based on user's high-rated movies.
+        """
         if high_rated.empty:
             return 0
         user_genres = "|".join(movies.loc[high_rated["movieId"]]["genres"].values)
@@ -136,7 +144,6 @@ def movie_recommendation(user_id, user_prompt, data, top_n=10, weights=None):
         return 1 - (abs(int(movie_year) - fav_year) / 50)
 
     # --- 5. Combine scores ---
-    
     movies = movies.copy()
     movies["score_prompt"] = sim_prompt
     movies["score_user"] = sim_user
@@ -167,6 +174,10 @@ def movie_recommendation(user_id, user_prompt, data, top_n=10, weights=None):
     ]]
 
 
+
+
+
+######### DEBUG ################################################################################################################################################
 # data = transform_data()
 # print(data)
 
