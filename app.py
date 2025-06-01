@@ -69,8 +69,7 @@ with st.expander("### ⚙️ Advanced search"):
         personalized = dp.get_personalized_weights(user_id, default_weights)
         for k in personalized:
             st.session_state[f"weight_{k}"] = personalized[k]
-                    
-        print("Personalized weights:", personalized)
+                
         st.rerun()
     
     
@@ -110,12 +109,6 @@ with st.expander("### ⚙️ Advanced search"):
         for k in weights:
             weights[k] /= total_weight
     
-    
-    
-    
-    
-    
-    
     # Show bar chart if available
     if "genre_ratings" in st.session_state:
         if st.session_state["genre_ratings"] is not None:
@@ -153,6 +146,7 @@ current_page = st.session_state["page"]
 start = current_page * items_per_page
 end = start + items_per_page
 current_slice = st.session_state["recommendations"].iloc[start:end]
+print(f"Current slice: {current_slice.columns.tolist()}")
 
 # Display recommendations if available
 if "recommendations" in st.session_state:
@@ -202,6 +196,8 @@ if "recommendations" in st.session_state:
                     st.markdown(f"[🔗 Wikipedia page]({row['wikipedia_link']})", unsafe_allow_html=True)
 
                 # Other metadata
+                st.write(f"**Release Year:** {int(row['year'])}")
+
                 st.write(f"**Genres:** {row['genres']}")
                 
                 

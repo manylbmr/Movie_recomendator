@@ -4,7 +4,6 @@ import pandas as pd
 def get_likes_dislikes_by_age():
     feedback = pd.read_csv(dp.FEEDBACK_FILE)
     users = dp.USERS_DF
-    print(users.columns)
     merged = feedback.merge(users, left_on="userId", right_on="user_id", how="left")
     merged["like"] = merged["feedback"].apply(lambda x: 1 if x >= 4 else 0)
     merged["dislike"] = merged["feedback"].apply(lambda x: 1 if x <= 2 else 0)
