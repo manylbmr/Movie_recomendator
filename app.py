@@ -8,9 +8,11 @@ import matplotlib.pyplot as plt
 import pandas as pd
 import os
 import numpy as np
+import seaborn as sns
 
 # local imports
 import data_processor as dp
+import stats_data as stats
 
 
 # Initialize session state variables
@@ -223,6 +225,46 @@ if "recommendations" in st.session_state:
                     )
                     st.success(f"✅ Feedback for '{row['title']}' saved!")
                 
-
 # Show current page number
-st.markdown(f"Page **{current_page + 1}** of **{total_pages}**")
+st.markdown(f"Page **{current_page + 1}** of **{total_pages}**")                
+                
+       
+
+#########################
+##### STATS SECTION #####
+#########################
+
+with st.expander("👍👎 Likes & Dislikes by Demographics and Genre", expanded=False):
+    st.subheader("Likes & Dislikes by Age, Occupation, and Genre")
+
+    # --- By Age Group ---
+    st.write("#### By Age Group")
+    age_stats = stats.get_likes_dislikes_by_age()
+    fig, ax = plt.subplots()
+    age_stats.plot(x="age", y=["like", "dislike"], kind="bar", ax=ax)
+    ax.set_xlabel("Age Group")
+    ax.set_ylabel("Count")
+    ax.set_title("Likes & Dislikes by Age Group")
+    st.pyplot(fig)
+
+    # --- By Occupation ---
+    st.write("#### By Occupation")
+    occ_stats = stats.get_likes_dislikes_by_occupation()
+    fig2, ax2 = plt.subplots()
+    occ_stats.plot(x="occupation", y=["like", "dislike"], kind="bar", ax=ax2)
+    ax2.set_xlabel("Occupation")
+    ax2.set_ylabel("Count")
+    ax2.set_title("Likes & Dislikes by Occupation")
+    st.pyplot(fig2)
+
+    # --- By Genre ---
+    st.write("#### By Genre")
+    genre_stats = stats.get_likes_dislikes_by_genre()
+    fig3, ax3 = plt.subplots(figsize=(10, 5))
+    genre_stats.plot(x="genre", y=["like", "dislike"], kind="bar", ax=ax3)
+    ax3.set_xlabel("Genre")
+    ax3.set_ylabel("Count")
+    ax3.set_title("Likes & Dislikes by Genre")
+    st.pyplot(fig3)
+
+
