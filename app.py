@@ -192,7 +192,7 @@ if "recommendations" in st.session_state:
         for _, row in current_slice.iterrows():
             with st.expander(f"{row['title']} ({row['avg_rating']:.2f}/5)"):
                 # Show Wikipedia intro only if it's not empty or a placeholder
-                if row.get("wikipedia_intro") and row["wikipedia_intro"] not in ["-"]:
+                if row.get("wikipedia_intro") and row["wikipedia_intro"] != "-":
                     st.write(f"**Description:** {row['wikipedia_intro']}")
                 else:
                     st.write(f"**Description:** ")
@@ -203,6 +203,37 @@ if "recommendations" in st.session_state:
 
                 # Other metadata
                 st.write(f"**Genres:** {row['genres']}")
+                
+                
+                score_breakdown = row["score_breakdown"]
+                toggle_key = f"show_breakdown_{row['movieId']}"
+
+                if "score_breakdown" in row and isinstance(score_breakdown, dict):
+                    # Remove 'weights' key if present
+                    filtered_breakdown = {k: v for k, v in score_breakdown.items() if k != "weights"}
+                    # Initialize toggle state if not present
+                    if toggle_key not in st.session_state:
+                        st.session_state[toggle_key] = False
+
+                    # Define the toggle function outside the button
+                    def toggle_breakdown(key=toggle_key):
+                        st.session_state[key] = not st.session_state[key]
+
+                    st.button(
+                        "Show Score Breakdown" if not st.session_state[toggle_key] else "Hide Score Breakdown",
+                        key=toggle_key + "_btn",
+                        on_click=toggle_breakdown
+                    )
+
+                    # Show chart if toggled on
+                    if st.session_state[toggle_key]:
+                        fig_sb, ax_sb = plt.subplots(figsize=(4, 1.5))
+                        pd.Series(filtered_breakdown).sort_values().plot.barh(ax=ax_sb, color="cornflowerblue")
+                        ax_sb.set_xlabel("Contribution")
+                        ax_sb.set_title("Score Breakdown")
+                        st.pyplot(fig_sb)
+                else:
+                    st.info("No score breakdown available.")
 
                 # ⭐️ Feedback system
                 stars = st.slider(

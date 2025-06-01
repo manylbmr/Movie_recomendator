@@ -9,11 +9,13 @@ This is a hybrid movie recommendation system built with **Streamlit** and powere
 
 ```
 movie_recommender/
-├── app.py                     # Main Streamlit application
+├── app.py                    # Main Streamlit application
+├── data_processor.py         # File to load and manage the datasets
+├── stats_data.py             # File to get the data to populate the graphs from the main application
 ├── extract_descriptions.py   # Script to enrich MovieLens data with Wikipedia descriptions
-├── archive/                  # Folder containing MovieLens datasets (movies.csv, ratings.csv, tags.csv, etc.)
+├── dataset/                  # Folder containing datasets (movies.csv, ratings.csv, tags.csv, etc.)
 ├── requirements.txt          # Python dependencies
-└── movies_with_wikipedia_intro.csv  # Output with enriched descriptions (optional)
+└── 
 ```
 
 ---
@@ -22,9 +24,9 @@ movie_recommender/
 
 - 🎯 Hybrid recommendations (text query + user profile + rating score)
 - 💬 Natural language input to describe what you want to watch
-- ⭐ Feedback system (0 to 5 stars) to improve the model (PENDING)
+- ⭐ Feedback system (0 to 5 stars) to improve the model
 - 📖 Description and intro for each movie (scraped from Wikipedia)
-- 📊 Explainable AI (XAI) with SHAP (PENDING)
+- 📊 Explainable AI (XAI) with SHAP
 - 📄 Pagination to navigate large recommendation lists
 
 ---
