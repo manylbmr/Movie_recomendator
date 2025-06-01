@@ -9,34 +9,8 @@ import pandas as pd
 import os
 import numpy as np
 
-# Used datasets
-movies_file = "dataset/movies_with_genres_and_intro.csv"
-ratings_file = "dataset/rating.csv"
-users_file = "dataset/user.csv"
-
-
-if not os.path.exists("dataset/feedback.csv"):
-    pd.DataFrame(columns=["userId", "movieId", "title", "sim_query", "sim_user", "rating_scaled", "final_score", "feedback"]).to_csv("feedback.csv", index=False)
-
-feedback_df = pd.read_csv("dataset/feedback.csv")  # o como lo estés almacenando
-
-def save_feedback(feedback_row, filename="feedback.csv"):
-    """
-    Save a feedback row into a CSV file without duplicating entries for the same user and movie.
-    """
-    # Convert row to DataFrame
-    new_entry = pd.DataFrame([feedback_row])
-    if os.path.exists(filename):
-        df = pd.read_csv(filename)
-        # Remove any existing feedback from same user for same movie
-        df = df[~((df["userId"] == feedback_row["userId"]) & (df["movieId"] == feedback_row["movieId"]))]
-        # Append the new entry
-        df = pd.concat([df, new_entry], ignore_index=True)
-    else:
-        df = new_entry
-    # Save back to file
-    df.to_csv(filename, index=False)
-    return df
+# local imports
+import data_processor as dp
 
 
 # Initialize session state variables
@@ -53,38 +27,6 @@ from movie_recommendator import (
     hybrid_recommendation
 )
 
-#TODO: CHECK THIS
-def estimate_weights_from_feedback(user_id, feedback_df):
-    return 0.6, 0.3, 0.1
-
-    #TODO:
-    user_feedback = feedback_df[feedback_df["userId"] == user_id]
-    
-    # feedback_df.shape[0] < 20
-    if user_feedback.empty or feedback_df.shape[0] < 20:
-        # Not enough feedback: return default weights
-        return 0.6, 0.3, 0.1
-
-    # Normalize each feature (optional but recommended)
-    from sklearn.preprocessing import MinMaxScaler
-    scaler = MinMaxScaler()
-    features = user_feedback[["sim_query", "sim_user", "rating_scaled"]].values
-    features_scaled = scaler.fit_transform(features)
-
-    # Feedback as target
-    target = user_feedback["feedback"].values
-
-    # Ridge regression to find importance
-    from sklearn.linear_model import Ridge
-    model = Ridge(alpha=0.1)
-    model.fit(features_scaled, target)
-
-    # Extract weights
-    weights = model.coef_
-    weights = weights / np.sum(weights)  # Normalize to sum to 1
-    return tuple(weights)
-
-
 # Page title
 st.title("🎬 Movie Recommender")
 
@@ -92,38 +34,86 @@ st.title("🎬 Movie Recommender")
 user_id = st.number_input("Enter your User ID", min_value=1, max_value=1000, value=1)
 query = st.text_area("Describe what you feel like watching (e.g., a sci-fi thriller with suspense):")
 
-# Get weights from past feedbacks
-weight_query, weight_user, weight_rating = estimate_weights_from_feedback(user_id, feedback_df)
-
-# weight_query = 0.6
-# weight_user = 0.3
-# weight_rating = 0.1
-
 
 # Settings section
-with st.expander("### ⚙️ Advanced search"):
 
-    # Number of results
+default_weights = {
+    "prompt": 0.6,
+    "user_profile": 0.3,
+    "rating": 0.1,
+    "genre": 0.1,
+    "year": 0.1
+}
+personalized = dp.get_personalized_weights(user_id, default_weights)
+
+# --- Initialization (before expander) ---
+for k in default_weights:
+    if f"weight_{k}" not in st.session_state:
+        st.session_state[f"weight_{k}"] = default_weights[k]
+
+if "last_user_id" not in st.session_state:
+    st.session_state["last_user_id"] = user_id
+
+if st.session_state["last_user_id"] != user_id:
+    personalized = dp.get_personalized_weights(user_id, default_weights)
+    for k in default_weights:
+        st.session_state[f"weight_{k}"] = personalized[k]
+    st.session_state["last_user_id"] = user_id
+            
+with st.expander("### ⚙️ Advanced search"):
+    
+    # Personalized weights button
+    if st.button("Get weight based on my user profile"):
+        personalized = dp.get_personalized_weights(user_id, default_weights)
+        for k in personalized:
+            st.session_state[f"weight_{k}"] = personalized[k]
+                    
+        print("Personalized weights:", personalized)
+        st.rerun()
+    
+    
     top_n = st.slider("Number of movies to recommend", min_value=5, max_value=20, value=10)
 
-    # Relevance weights
-    col1, col2, col3 = st.columns(3)
+    col1, col2, col3, col4, col5 = st.columns(5)
     with col1:
-        weight_query = st.slider("Weight: description", 0.0, 1.0, 0.6, step=0.05)
+        st.slider(
+            "Weight: description", 0.0, 1.0, st.session_state["weight_prompt"], step=0.05, key="weight_prompt")
     with col2:
-        weight_user = st.slider("Weight: user profile", 0.0, 1.0, 0.3, step=0.05)
+        st.slider(
+            "Weight: user profile", 0.0, 1.0, st.session_state["weight_user_profile"], step=0.05, key="weight_user_profile")
     with col3:
-        weight_rating = st.slider("Weight: global rating", 0.0, 1.0, 0.1, step=0.05)
+        st.slider(
+            "Weight: global rating", 0.0, 1.0, st.session_state["weight_rating"], step=0.05, key="weight_rating")
+    with col4:
+        st.slider(
+            "Weight: genre", 0.0, 1.0, st.session_state["weight_genre"], step=0.05, key="weight_genre")
+    with col5:
+        st.slider(
+            "Weight: year", 0.0, 1.0, st.session_state["weight_year"], step=0.05, key="weight_year")
 
-    # Normalize weights
-    total_weight = weight_query + weight_user + weight_rating
-    weight_query /= total_weight
-    weight_user /= total_weight
-    weight_rating /= total_weight
+        
+    
 
-    if st.button("🎭 Show average rating per genre"):
-        st.session_state["genre_ratings"] = get_average_rating_per_genre(user_id)
-
+    weights = {
+        "prompt": st.session_state["weight_prompt"],
+        "user_profile": st.session_state["weight_user_profile"],
+        "rating": st.session_state["weight_rating"],
+        "genre": st.session_state["weight_genre"],
+        "year": st.session_state["weight_year"]
+    }
+        
+    # Normalize
+    total_weight = sum(weights.values())
+    if total_weight > 0:
+        for k in weights:
+            weights[k] /= total_weight
+    
+    
+    
+    
+    
+    
+    
     # Show bar chart if available
     if "genre_ratings" in st.session_state:
         if st.session_state["genre_ratings"] is not None:
@@ -138,16 +128,16 @@ with st.expander("### ⚙️ Advanced search"):
 
 
 
-
 # --- Button: generate recommendations ---
 col1, col2, col3 = st.columns([2, 1, 2])
 with col2:
     if st.button("🎯 Search for Movies!"):
-        st.session_state["recommendations"] = hybrid_recommendation(
-            user_id, query, top_n=50,  # or whatever max you want to store
-            w_query=weight_query,
-            w_user=weight_user,
-            w_rating=weight_rating
+        st.session_state["recommendations"] = dp.movie_recommendation(
+            user_id = user_id, 
+            user_prompt = query, 
+            data = dp.transform_data(),
+            n_results = top_n, 
+            weights = weights,
         )
         st.session_state["page"] = 0  # Reset to first page
 
@@ -225,17 +215,12 @@ if "recommendations" in st.session_state:
 
                 # Save feedback when rated
                 if stars > 0 and st.button(f"Submit feedback", key=f"submit_slider_{row['movieId']}"):
-                    feedback_row = {
-                        "userId": user_id,
-                        "movieId": row["movieId"],
-                        "title": row["title"],
-                        "sim_query": row["sim_query"],
-                        "sim_user": row["sim_user"],
-                        "rating_scaled": row["rating_scaled"],
-                        "final_score": row["final_score"],
-                        "feedback": stars
-                    }
-                    save_feedback(feedback_row)
+                    dp.save_recommendation_feedback(
+                        user_id, 
+                        row["movieId"], 
+                        stars, 
+                        row["score_breakdown"]
+                    )
                     st.success(f"✅ Feedback for '{row['title']}' saved!")
                 
 
